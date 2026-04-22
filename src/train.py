@@ -8,7 +8,7 @@ import torch.optim as optim
 from src.utils.config import load_config
 from src.models.model_factory import get_model
 from src.data_loader import get_cifar10_loaders
-
+from src.evaluation.metrics import compute_accuracy, compute_nll, compute_ece
 
 def train_one_epoch(model, loader, criterion, optimizer, device):
     model.train()
@@ -41,6 +41,9 @@ def evaluate(model, loader, criterion, device):
     total_correct = 0
     total_samples = 0
 
+    all_logits = []
+    all_labels = []
+
     with torch.no_grad():
         for images, labels in loader:
             images, labels = images.to(device), labels.to(device)
@@ -53,9 +56,16 @@ def evaluate(model, loader, criterion, device):
             total_correct += (preds == labels).sum().item()
             total_samples += images.size(0)
 
+            all_logits.append(outputs)
+            all_labels.append(labels)
+
     avg_loss = total_loss / total_samples
     accuracy = total_correct / total_samples
-    return avg_loss, accuracy
+
+    all_logits = torch.cat(all_logits, dim=0)
+    all_labels = torch.cat(all_labels, dim=0)
+
+    return avg_loss, accuracy, all_logits, all_labels
 
 
 def ensure_dirs(config):
@@ -112,28 +122,36 @@ def main():
     epochs = config["training"]["epochs"]
 
     history = {
-        "experiment_name": config["experiment_name"],
-        "device": str(device),
-        "epochs": epochs,
-        "train_loss": [],
-        "train_acc": [],
-        "test_loss": [],
-        "test_acc": [],
+    "experiment_name": config["experiment_name"],
+    "device": str(device),
+    "epochs": epochs,
+    "train_loss": [],
+    "train_acc": [],
+    "test_loss": [],
+    "test_acc": [],
+    "test_nll": [],
+    "test_ece": [],
     }
 
     for epoch in range(epochs):
         train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        test_loss, test_acc = evaluate(model, test_loader, criterion, device)
+        test_loss, test_acc, test_logits, test_labels = evaluate(model, test_loader, criterion, device)
+
+        test_nll = compute_nll(test_logits, test_labels)
+        test_ece = compute_ece(test_logits, test_labels)
 
         history["train_loss"].append(train_loss)
         history["train_acc"].append(train_acc)
         history["test_loss"].append(test_loss)
         history["test_acc"].append(test_acc)
+        history["test_nll"].append(test_nll)
+        history["test_ece"].append(test_ece)
 
         print(
             f"Epoch {epoch+1}/{epochs} | "
             f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f} | "
-            f"Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f}"
+            f"Test Loss: {test_loss:.4f} | Test Acc: {test_acc:.4f} | "
+            f"Test NLL: {test_nll:.4f} | Test ECE: {test_ece:.4f}"
         )
 
     save_checkpoint(model, config)
