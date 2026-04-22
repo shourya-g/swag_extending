@@ -1,0 +1,29 @@
+experiment_name: resnet18_cifar10_swa
+
+dataset:
+  name: cifar10
+  batch_size: 128
+  num_workers: 2
+
+model:
+  name: resnet18
+  num_classes: 10
+
+training:
+  optimizer: sgd
+  lr: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  epochs: 4
+
+swa:
+  start_epoch: 2
+  save_freq: 1
+
+input:
+  baseline_checkpoint: outputs/checkpoints/resnet18_cifar10_sgd.pt
+
+output:
+  checkpoint_dir: outputs/checkpoints
+  metrics_dir: outputs/metrics
+  figures_dir: outputs/figures
