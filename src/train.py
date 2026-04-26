@@ -1,6 +1,6 @@
 import json
 import os
-
+import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -94,7 +94,16 @@ def save_metrics(metrics, config):
 
 
 def main():
-    config = load_config("configs/baseline.yaml")
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+    "--config",
+    type=str,
+    default="configs/baseline.yaml",
+    help="Path to config file",
+    )
+    args = parser.parse_args()
+
+    config = load_config(args.config)
     ensure_dirs(config)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
