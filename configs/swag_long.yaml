@@ -14,15 +14,15 @@ training:
   lr: 0.005
   momentum: 0.9
   weight_decay: 0.0005
-  epochs: 10
+  epochs: 60
 
 swa:
-  start_epoch: 2
+  start_epoch: 20
   save_freq: 1
 
 swag:
-  max_rank: 10
-  num_samples: 20
+  max_rank: 20
+  num_samples: 50
   var_clamp: 0.0000001
 
 input:

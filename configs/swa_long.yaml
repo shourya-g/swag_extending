@@ -14,10 +14,10 @@ training:
   lr: 0.005
   momentum: 0.9
   weight_decay: 0.0005
-  epochs: 10
+  epochs: 60
 
 swa:
-  start_epoch: 2
+  start_epoch: 20
   save_freq: 1
 
 input:
