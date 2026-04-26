@@ -1,25 +1,40 @@
+import argparse
 import json
 import os
 
 import pandas as pd
 
 
-SGD_METRICS = "outputs/metrics/resnet18_cifar10_sgd_metrics.json"
-SWA_METRICS = "outputs/metrics/resnet18_cifar10_swa_metrics.json"
-SWAG_METRICS = "outputs/metrics/resnet18_cifar10_swag_metrics.json"
-
-SAVE_PATH = "outputs/metrics/sgd_swa_swag_comparison.csv"
+RUN_PATHS = {
+    "debug": {
+        "sgd": "outputs/metrics/resnet18_cifar10_sgd_metrics.json",
+        "swa": "outputs/metrics/resnet18_cifar10_swa_metrics.json",
+        "swag": "outputs/metrics/resnet18_cifar10_swag_metrics.json",
+        "save": "outputs/metrics/sgd_swa_swag_comparison_debug.csv",
+    },
+    "long": {
+        "sgd": "outputs/metrics/resnet18_cifar10_sgd_long_metrics.json",
+        "swa": "outputs/metrics/resnet18_cifar10_swa_long_metrics.json",
+        "swag": "outputs/metrics/resnet18_cifar10_swag_long_metrics.json",
+        "save": "outputs/metrics/sgd_swa_swag_comparison_long.csv",
+    },
+}
 
 
 def load_json(path: str):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Missing metrics file: {path}")
+
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def main():
-    sgd = load_json(SGD_METRICS)
-    swa = load_json(SWA_METRICS)
-    swag = load_json(SWAG_METRICS)
+def build_comparison(run_name: str):
+    paths = RUN_PATHS[run_name]
+
+    sgd = load_json(paths["sgd"])
+    swa = load_json(paths["swa"])
+    swag = load_json(paths["swag"])
 
     rows = [
         {
@@ -43,13 +58,26 @@ def main():
     ]
 
     df = pd.DataFrame(rows)
-
     os.makedirs("outputs/metrics", exist_ok=True)
-    df.to_csv(SAVE_PATH, index=False)
+    df.to_csv(paths["save"], index=False)
 
-    print("\nSGD vs SWA vs SWAG comparison:")
+    print(f"\nSGD vs SWA vs SWAG comparison ({run_name}):")
     print(df.to_string(index=False))
-    print(f"\nSaved comparison table to: {SAVE_PATH}")
+    print(f"\nSaved comparison table to: {paths['save']}")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--run",
+        type=str,
+        default="long",
+        choices=["debug", "long"],
+        help="Which experiment group to compare",
+    )
+    args = parser.parse_args()
+
+    build_comparison(args.run)
 
 
 if __name__ == "__main__":

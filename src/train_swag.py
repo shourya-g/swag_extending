@@ -101,10 +101,9 @@ def evaluate_swag_bma(model, swag_posterior, train_loader, test_loader, device, 
     correct_probs = mean_probs[torch.arange(labels_ref.size(0), device=device), labels_ref]
     nll = -torch.log(correct_probs + 1e-12).mean().item()
 
-    # ECE function expects logits, so we pass log probabilities as logits-like values.
     ece = compute_ece(torch.log(mean_probs + 1e-12), labels_ref)
 
-    return acc, nll, ece
+    return acc, nll, ece, mean_probs.detach().cpu(), labels_ref.detach().cpu()
 
 
 def ensure_dirs(config):
@@ -209,13 +208,13 @@ def main():
     history["num_swag_snapshots"] = swag_posterior.n_models
 
     print("\nEvaluating SWAG with Bayesian Model Averaging...")
-    swag_acc, swag_nll, swag_ece = evaluate_swag_bma(
-        model=model,
-        swag_posterior=swag_posterior,
-        train_loader=train_loader,
-        test_loader=test_loader,
-        device=device,
-        num_samples=config["swag"]["num_samples"],
+    swag_acc, swag_nll, swag_ece, swag_probs, swag_labels = evaluate_swag_bma(
+    model=model,
+    swag_posterior=swag_posterior,
+    train_loader=train_loader,
+    test_loader=test_loader,
+    device=device,
+    num_samples=config["swag"]["num_samples"],
     )
 
     history["final_swag_test_acc"] = swag_acc
@@ -235,7 +234,20 @@ def main():
     )
 
     save_metrics(history, metrics_path)
+    preds_path = os.path.join(
+    config["output"]["metrics_dir"],
+    f'{config["experiment_name"]}_predictions.pt'
+    )
 
+    torch.save(
+        {
+            "probs": swag_probs,
+            "labels": swag_labels,
+        },
+        preds_path,
+    )
+
+    print(f"Saved SWAG predictions to: {preds_path}")
 
 if __name__ == "__main__":
     main()
