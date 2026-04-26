@@ -1,0 +1,34 @@
+experiment_name: resnet18_cifar10_swag_long
+
+dataset:
+  name: cifar10
+  batch_size: 128
+  num_workers: 2
+
+model:
+  name: resnet18
+  num_classes: 10
+
+training:
+  optimizer: sgd
+  lr: 0.005
+  momentum: 0.9
+  weight_decay: 0.0005
+  epochs: 10
+
+swa:
+  start_epoch: 2
+  save_freq: 1
+
+swag:
+  max_rank: 10
+  num_samples: 20
+  var_clamp: 0.0000001
+
+input:
+  baseline_checkpoint: outputs/checkpoints/resnet18_cifar10_sgd_long.pt
+
+output:
+  checkpoint_dir: outputs/checkpoints
+  metrics_dir: outputs/metrics
+  figures_dir: outputs/figures
