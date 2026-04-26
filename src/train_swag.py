@@ -233,7 +233,7 @@ def main():
         f'{config["experiment_name"]}_metrics.json'
     )
 
-    save_metrics(history, metrics_path)
+    
     preds_path = os.path.join(
     config["output"]["metrics_dir"],
     f'{config["experiment_name"]}_predictions.pt'
@@ -246,8 +246,64 @@ def main():
         },
         preds_path,
     )
+    print("\nEvaluating SWA mean from SWAG posterior...")
 
+    # Set model weights to SWA mean
+    swag_posterior.set_weights(model, swag_posterior.mean, device)
+
+    # Recompute BatchNorm stats for the SWA mean model
+    update_bn(train_loader, model, device)
+
+    # Collect predictions for SWA mean model
+    swa_logits, swa_labels = collect_logits_and_labels(model, test_loader, device)
+    swa_probs = torch.softmax(swa_logits, dim=1)
+
+    swa_preds = swa_probs.argmax(dim=1)
+    swa_acc = (swa_preds == swa_labels).float().mean().item()
+
+    swa_correct_probs = swa_probs[torch.arange(swa_labels.size(0), device=device), swa_labels]
+    swa_nll = -torch.log(swa_correct_probs + 1e-12).mean().item()
+
+    swa_ece = compute_ece(torch.log(swa_probs + 1e-12), swa_labels)
+
+    history["final_swa_test_acc"] = swa_acc
+    history["final_swa_test_nll"] = swa_nll
+    history["final_swa_test_ece"] = swa_ece
+
+    print("\nFinal SWA evaluation from SWAG trajectory:")
+    print(
+        f"SWA Test Acc: {swa_acc:.4f} | "
+        f"SWA Test NLL: {swa_nll:.4f} | "
+        f"SWA Test ECE: {swa_ece:.4f}"
+    )
+
+    # Save SWA checkpoint with updated BatchNorm stats
+    swa_checkpoint_path = os.path.join(
+        config["output"]["checkpoint_dir"],
+        f'{config["experiment_name"].replace("swag", "swa")}.pt'
+    )
+
+    torch.save(model.state_dict(), swa_checkpoint_path)
+    print(f"Saved SWA checkpoint to: {swa_checkpoint_path}")
+
+    # Save SWA predictions
+    swa_preds_path = os.path.join(
+        config["output"]["metrics_dir"],
+        f'{config["experiment_name"].replace("swag", "swa")}_predictions.pt'
+    )
+
+    torch.save(
+        {
+            "probs": swa_probs.detach().cpu(),
+            "labels": swa_labels.detach().cpu(),
+        },
+        swa_preds_path,
+    )
+
+    print(f"Saved SWA predictions to: {swa_preds_path}")
+    
+    
+    save_metrics(history, metrics_path)
     print(f"Saved SWAG predictions to: {preds_path}")
-
 if __name__ == "__main__":
     main()

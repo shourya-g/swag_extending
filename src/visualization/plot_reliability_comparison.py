@@ -66,10 +66,10 @@ def main():
     args = parser.parse_args()
 
     methods = {
-        "SGD": "outputs/metrics/preds_sgd_long.pt",
-        "SWA": "outputs/metrics/preds_swa_long.pt",
-        "SWAG": "outputs/metrics/resnet18_cifar10_swag_long_predictions.pt",
-    }
+    "SGD": "outputs/metrics/preds_sgd_long.pt",
+    "SWA": "outputs/metrics/resnet18_cifar10_swa_long_predictions.pt",
+    "SWAG": "outputs/metrics/resnet18_cifar10_swag_long_predictions.pt",
+}
 
     plt.figure(figsize=(7, 5))
     plt.axhline(0.0, linestyle="--", linewidth=1.5, label="Perfect calibration")
