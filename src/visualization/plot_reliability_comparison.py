@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 
 
-def calibration_curve_from_probs(probs, labels, n_bins=15):
+def calibration_curve_from_probs(probs, labels, n_bins=10):
     confidences, predictions = torch.max(probs, dim=1)
     accuracies = predictions.eq(labels)
 
