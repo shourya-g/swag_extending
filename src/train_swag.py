@@ -134,9 +134,14 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
+    train_classes = config["dataset"].get("train_classes", None)
+    test_classes = config["dataset"].get("test_classes", train_classes)
+
     train_loader, test_loader = get_cifar10_loaders(
         batch_size=config["dataset"]["batch_size"],
         num_workers=config["dataset"]["num_workers"],
+        train_classes=train_classes,
+        test_classes=test_classes,
     )
 
     model = get_model(
@@ -206,6 +211,14 @@ def main():
         )
 
     history["num_swag_snapshots"] = swag_posterior.n_models
+    posterior_path = os.path.join(
+    config["output"]["checkpoint_dir"],
+    f'{config["experiment_name"]}_posterior.pt'
+)
+
+    torch.save(swag_posterior.state_dict(), posterior_path)
+    print(f"Saved SWAG posterior to: {posterior_path}")
+
 
     print("\nEvaluating SWAG with Bayesian Model Averaging...")
     swag_acc, swag_nll, swag_ece, swag_probs, swag_labels = evaluate_swag_bma(

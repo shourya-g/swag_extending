@@ -1,0 +1,24 @@
+experiment_name: resnet18_cifar10_5class_sgd
+
+dataset:
+  name: cifar10
+  batch_size: 128
+  num_workers: 2
+  train_classes: [0, 1, 2, 3, 4]
+  test_classes: [0, 1, 2, 3, 4]
+
+model:
+  name: resnet18
+  num_classes: 5
+
+training:
+  optimizer: sgd
+  lr: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  epochs: 160
+
+output:
+  checkpoint_dir: outputs/checkpoints
+  metrics_dir: outputs/metrics
+  figures_dir: outputs/figures

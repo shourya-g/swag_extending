@@ -101,3 +101,27 @@ class SWAGPosterior:
         """
         vector = vector.to(device)
         vector_to_parameters(vector, model.parameters())
+        
+    def state_dict(self):
+        """
+        Save enough information to reconstruct the SWAG posterior later.
+        """
+        return {
+            "max_rank": self.max_rank,
+            "var_clamp": self.var_clamp,
+            "n_models": self.n_models,
+            "mean": self.mean,
+            "sq_mean": self.sq_mean,
+            "deviations": self.deviations,
+        }
+
+    def load_state_dict(self, state):
+        """
+        Load SWAG posterior statistics from a saved state dictionary.
+        """
+        self.max_rank = state["max_rank"]
+        self.var_clamp = state["var_clamp"]
+        self.n_models = state["n_models"]
+        self.mean = state["mean"]
+        self.sq_mean = state["sq_mean"]
+        self.deviations = state["deviations"]    
