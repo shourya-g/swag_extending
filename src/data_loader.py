@@ -7,13 +7,16 @@ import torchvision.transforms as transforms
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2470, 0.2435, 0.2616)
 
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
+
 
 class FilteredCIFAR10(Dataset):
     """
     Fast CIFAR-10 class filter.
 
     Uses dataset.targets directly instead of calling dataset[idx],
-    so it does NOT transform every image just to inspect labels.
+    so it does not transform every image just to inspect labels.
     """
 
     def __init__(self, dataset, allowed_classes, remap_labels=True):
@@ -27,7 +30,6 @@ class FilteredCIFAR10(Dataset):
             for new_label, original_label in enumerate(self.allowed_classes)
         }
 
-        # CIFAR10 stores raw labels in dataset.targets
         self.indices = [
             idx for idx, label in enumerate(dataset.targets)
             if label in self.allowed_set
@@ -46,18 +48,69 @@ class FilteredCIFAR10(Dataset):
         return image, label
 
 
-def get_cifar10_transforms():
-    train_transform = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
+def get_cifar10_transforms(
+    image_size: int = 32,
+    normalization: str = "cifar10",
+    augment: bool = True,
+):
+    """
+    Creates train/test transforms.
 
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
+    For ResNet CIFAR-10:
+        image_size=32
+        normalization=cifar10
+
+    For pretrained ViT:
+        image_size=224
+        normalization=imagenet
+    """
+
+    if normalization == "cifar10":
+        mean, std = CIFAR10_MEAN, CIFAR10_STD
+    elif normalization == "imagenet":
+        mean, std = IMAGENET_MEAN, IMAGENET_STD
+    else:
+        raise ValueError(f"Unknown normalization: {normalization}")
+
+    if image_size == 32:
+        if augment:
+            train_transform = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std),
+            ])
+        else:
+            train_transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std),
+            ])
+
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ])
+
+    else:
+        if augment:
+            train_transform = transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std),
+            ])
+        else:
+            train_transform = transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean, std),
+            ])
+
+        test_transform = transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std),
+        ])
 
     return train_transform, test_transform
 
@@ -67,19 +120,33 @@ def get_cifar10_loaders(
     num_workers: int,
     train_classes=None,
     test_classes=None,
+    image_size: int = 32,
+    normalization: str = "cifar10",
+    augment: bool = True,
 ):
     """
-    Standard CIFAR-10 loaders, with optional class filtering.
+    Standard CIFAR-10 loaders with optional class filtering.
 
-    For normal training:
+    Normal ResNet run:
         train_classes=None
         test_classes=None
+        image_size=32
+        normalization=cifar10
 
-    For OOD 5-class training:
+    ViT run:
+        image_size=224
+        normalization=imagenet
+
+    OOD 5-class run:
         train_classes=[0,1,2,3,4]
         test_classes=[0,1,2,3,4]
     """
-    train_transform, test_transform = get_cifar10_transforms()
+
+    train_transform, test_transform = get_cifar10_transforms(
+        image_size=image_size,
+        normalization=normalization,
+        augment=augment,
+    )
 
     train_dataset = torchvision.datasets.CIFAR10(
         root="data/raw",
@@ -128,13 +195,23 @@ def get_cifar10_loaders(
     return train_loader, test_loader
 
 
-def get_cifar10_full_test_loader(batch_size: int, num_workers: int):
+def get_cifar10_full_test_loader(
+    batch_size: int,
+    num_workers: int,
+    image_size: int = 32,
+    normalization: str = "cifar10",
+):
     """
     Full CIFAR-10 test loader with original labels 0-9.
 
-    Used for OOD evaluation after training on only classes 0-4.
+    Used for OOD evaluation.
     """
-    _, test_transform = get_cifar10_transforms()
+
+    _, test_transform = get_cifar10_transforms(
+        image_size=image_size,
+        normalization=normalization,
+        augment=False,
+    )
 
     test_dataset = torchvision.datasets.CIFAR10(
         root="data/raw",
